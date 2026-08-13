@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#f4f1e6">
+<title>학교 공지사항</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+  :root{
+    --ink:#1f2a24; --ink-soft:#5b6660;
+    --paper:#f4f1e6; --card:#fbf9f2; --line:#e3ddc9; --line-soft:#ece6d4;
+    --teal:#0f6e63; --teal-soft:#e2efec;
+    --mustard:#a8720c; --mustard-soft:#f4e9d3;
+    --slate:#445168; --slate-soft:#e6e9ef;
+    --stamp-red:#bd3b2c; --stamp-red-soft:#f7e3df;
+    --stamp-amber:#b9791b; --stamp-amber-soft:#f6ead2;
+    --stamp-green:#3f7457; --stamp-green-soft:#e2ede5;
+    --stamp-gray:#6b7280; --stamp-gray-soft:#e9eaec;
+    --stamp-overdue:#7a2a24; --stamp-overdue-soft:#ecdcd8;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0;}
+  body{
+    background:radial-gradient(circle at 1px 1px, rgba(31,42,36,0.05) 1px, transparent 0) 0 0/22px 22px, var(--paper);
+    color:var(--ink); font-family:'Pretendard', -apple-system, sans-serif;
+    min-height:100vh; padding-bottom:48px;
+  }
+  header{
+    padding:22px 18px 14px; border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg, rgba(244,241,230,0.97), rgba(244,241,230,0.88));
+    position:sticky; top:0; z-index:20; backdrop-filter:blur(6px);
+  }
+  .eyebrow{font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-soft); font-weight:600; margin-bottom:4px;}
+  h1{font-family:'Noto Serif KR', serif; font-size:23px; font-weight:700; margin:0 0 10px; letter-spacing:-.01em;}
+  .meta-row{display:flex; align-items:center; justify-content:space-between; font-size:12px; color:var(--ink-soft);}
+  .status{display:flex; align-items:center; gap:6px;}
+  .dot{width:6px; height:6px; border-radius:50%; background:var(--stamp-green); flex:none;}
+  .dot.loading{background:var(--stamp-amber); animation:pulse 1.1s infinite;}
+  .dot.error{background:var(--stamp-red);}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.25;}}
+  #refreshBtn, #signOutBtn{
+    border:1px solid var(--line); background:var(--card); color:var(--ink);
+    font-family:'Pretendard'; font-size:12px; font-weight:600;
+    padding:6px 11px; border-radius:20px; display:flex; align-items:center; gap:5px; cursor:pointer;
+  }
+  #refreshBtn:active, #signOutBtn:active{transform:scale(.96);}
+  #refreshBtn svg{width:12px; height:12px; transition:transform .5s;}
+  #refreshBtn.spin svg{animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .header-actions{display:flex; gap:8px;}
+
+  /* Sign-in screen */
+  #signinScreen{
+    min-height:70vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:40px 24px;
+  }
+  #signinScreen .icon{font-size:40px; margin-bottom:14px;}
+  #signinScreen h2{font-family:'Noto Serif KR', serif; font-size:19px; margin:0 0 8px;}
+  #signinScreen p{font-size:13px; color:var(--ink-soft); line-height:1.6; margin:0 0 22px; max-width:280px;}
+  #signinBtn{
+    background:var(--ink); color:var(--paper); border:none; border-radius:24px;
+    padding:12px 24px; font-family:'Pretendard'; font-size:14px; font-weight:700; cursor:pointer;
+    display:flex; align-items:center; gap:8px;
+  }
+  #signinBtn:active{transform:scale(.97);}
+
+  .chip-row{display:flex; gap:8px; padding:14px 18px 0; overflow-x:auto; scrollbar-width:none;}
+  .chip-row::-webkit-scrollbar{display:none;}
+  .chip{flex:none; border:1px solid var(--line); background:var(--card); color:var(--ink-soft);
+    font-size:13px; font-weight:600; padding:7px 14px; border-radius:20px; cursor:pointer; white-space:nowrap; transition:.15s;}
+  .chip .count{opacity:.55; font-weight:500; margin-left:2px;}
+  .chip[data-active="true"]{background:var(--ink); color:var(--paper); border-color:var(--ink);}
+  .chip[data-child="희엘"][data-active="true"]{background:var(--teal); border-color:var(--teal);}
+  .chip[data-child="라엘"][data-active="true"]{background:var(--mustard); border-color:var(--mustard);}
+  .chip[data-child="전체공문"][data-active="true"]{background:var(--slate); border-color:var(--slate);}
+
+  .tab-row{display:flex; gap:22px; padding:16px 18px 0; border-bottom:1px solid var(--line-soft);}
+  .tab{font-family:'Noto Serif KR', serif; font-size:15px; font-weight:600; color:var(--ink-soft); padding-bottom:10px; cursor:pointer; position:relative;}
+  .tab[data-active="true"]{color:var(--ink);}
+  .tab[data-active="true"]::after{content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px; background:var(--ink);}
+  .tab .count{font-family:'JetBrains Mono'; font-size:12px; font-weight:600; opacity:.5; margin-left:3px;}
+
+  #list{padding:16px 16px 6px; display:flex; flex-direction:column; gap:12px;}
+  .empty{text-align:center; color:var(--ink-soft); font-size:13px; padding:56px 20px; line-height:1.7;}
+  .empty .big{font-size:26px; display:block; margin-bottom:8px;}
+
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px 14px 13px; position:relative;
+    box-shadow:0 1px 0 rgba(31,42,36,0.02); transition:opacity .25s, transform .25s;}
+  .card.removing{opacity:0; transform:scale(.97);}
+  .card.done{opacity:.72;}
+  .card-top{display:flex; justify-content:space-between; align-items:flex-start; gap:8px; margin-bottom:9px;}
+  .left-cluster{display:flex; align-items:flex-start; gap:9px; min-width:0;}
+
+  .check-btn{
+    flex:none; width:26px; height:26px; border-radius:50%; border:1.5px solid var(--line);
+    background:var(--paper); cursor:pointer; display:flex; align-items:center; justify-content:center;
+    margin-top:1px; transition:.15s;
+  }
+  .check-btn svg{width:14px; height:14px; opacity:0; transition:.15s; stroke:#fff;}
+  .check-btn:active{transform:scale(.9);}
+  .card.done .check-btn{background:var(--stamp-green); border-color:var(--stamp-green);}
+  .card.done .check-btn svg{opacity:1;}
+
+  .tag-group{display:flex; flex-wrap:wrap; gap:6px; align-items:center; min-width:0;}
+  .tag{font-size:11px; font-weight:700; padding:3px 8px; border-radius:6px; letter-spacing:.01em;}
+  .tag.child-희엘{background:var(--teal-soft); color:var(--teal);}
+  .tag.child-라엘{background:var(--mustard-soft); color:var(--mustard);}
+  .tag.child-전체공문{background:var(--slate-soft); color:var(--slate);}
+  .tag.kind{background:var(--line-soft); color:var(--ink-soft); font-weight:600;}
+
+  .stamp{flex:none; font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:700;
+    padding:4px 9px; border:1.5px dashed currentColor; border-radius:7px; transform:rotate(-3deg); white-space:nowrap; letter-spacing:.02em;}
+  .stamp.urgent{color:var(--stamp-red); background:var(--stamp-red-soft);}
+  .stamp.soon{color:var(--stamp-amber); background:var(--stamp-amber-soft);}
+  .stamp.normal{color:var(--stamp-green); background:var(--stamp-green-soft);}
+  .stamp.calm{color:var(--stamp-gray); background:var(--stamp-gray-soft);}
+  .stamp.overdue{color:var(--stamp-overdue); background:var(--stamp-overdue-soft); text-decoration:line-through wavy;}
+  .stamp.doneFixed{color:var(--stamp-green); background:var(--stamp-green-soft);}
+
+  .title-link{font-family:'Noto Serif KR', serif; font-size:15.5px; font-weight:600; line-height:1.42; margin:0 0 6px;
+    letter-spacing:-.005em; color:var(--ink); text-decoration:none; display:block; cursor:pointer;}
+  .title-link:active{opacity:.6;}
+  .title-link .arrow{font-size:12px; opacity:.4; margin-left:3px;}
+  .body-text{font-size:13px; line-height:1.62; color:#3a443e; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;}
+  .body-text.expanded{-webkit-line-clamp:unset; overflow:visible;}
+  .more-btn{font-size:11.5px; font-weight:700; color:var(--ink-soft); margin-top:6px; cursor:pointer; display:inline-block;}
+
+  .card-foot{margin-top:11px; padding-top:9px; border-top:1px dashed var(--line); display:flex; justify-content:space-between; align-items:center; font-size:11px; color:var(--ink-soft);}
+  .sender{max-width:60%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .deadline{font-family:'JetBrains Mono'; font-weight:600; white-space:nowrap;}
+  .deadline .lab{font-family:'Pretendard'; font-weight:500; opacity:.7; margin-right:3px;}
+  .done-meta{margin-top:8px; font-size:11px; color:var(--stamp-green); font-weight:600; display:flex; justify-content:space-between; align-items:center;}
+  .undo-btn{font-size:11px; font-weight:700; color:var(--ink-soft); background:none; border:1px solid var(--line); border-radius:20px; padding:3px 9px; cursor:pointer;}
+
+  footer{text-align:center; font-size:11px; color:var(--ink-soft); padding:22px 20px 6px; line-height:1.7;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">가족 알림장 · Family Notice Board</div>
+  <h1>학교 공지사항</h1>
+  <div class="meta-row">
+    <div class="status"><span class="dot loading" id="statusDot"></span><span id="statusText">로그인 대기 중...</span></div>
+    <div class="header-actions">
+      <button id="refreshBtn" onclick="loadData(true)" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-2.6-6.36M21 4v6h-6"/></svg>
+        새로고침
+      </button>
+      <button id="signOutBtn" onclick="signOut()" style="display:none;">로그아웃</button>
+    </div>
+  </div>
+</header>
+
+<div id="signinScreen">
+  <div class="icon">📋</div>
+  <h2>학교 공지사항</h2>
+  <p>구글 계정으로 로그인하면 시트 데이터를 보고<br>확인 체크도 바로 반영할 수 있어요.</p>
+  <button id="signinBtn" onclick="signIn()">Google 계정으로 로그인</button>
+</div>
+
+<div id="appBody" style="display:none;">
+  <div class="chip-row" id="chipRow"></div>
+  <div class="tab-row">
+    <div class="tab" data-tab="pending" data-active="true" onclick="setTab('pending')">진행 중 <span class="count" id="cntPending">0</span></div>
+    <div class="tab" data-tab="done" data-active="false" onclick="setTab('done')">완료 <span class="count" id="cntDone">0</span></div>
+  </div>
+  <div id="list"></div>
+  <footer>확인을 누르면 원본 구글시트에도 바로 반영됩니다.<br>제목을 누르면 관련 메일이 열립니다.</footer>
+</div>
+
+<script>
+// ============ 설정 ============
+const CLIENT_ID = 'YOUR_CLIENT_ID_HERE.apps.googleusercontent.com';
+const SHEET_ID = '1MCUMyz8pR40iUZRa-GxIHOlQ_6SJp3NvPO-LFHy2o38';
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
+// ================================
+
+var allItems = [];
+var currentTab = 'pending';
+var activeChild = '전체';
+var accessToken = null;
+var tokenClient = null;
+var sheetTitle = null;
+
+function initGIS(){
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: function(resp){
+      if(resp.error){ setStatus('error', '로그인 실패: ' + resp.error); return; }
+      accessToken = resp.access_token;
+      onSignedIn();
+    }
+  });
+}
+
+function signIn(){
+  if(!tokenClient){ alert('아직 초기화 중이에요. 잠시 후 다시 눌러주세요.'); return; }
+  tokenClient.requestAccessToken({prompt: 'consent'});
+}
+
+function signOut(){
+  if(accessToken){
+    google.accounts.oauth2.revoke(accessToken, function(){});
+  }
+  accessToken = null;
+  document.getElementById('appBody').style.display = 'none';
+  document.getElementById('signinScreen').style.display = 'flex';
+  document.getElementById('refreshBtn').style.display = 'none';
+  document.getElementById('signOutBtn').style.display = 'none';
+  setStatus('', '로그인 대기 중...');
+}
+
+function onSignedIn(){
+  document.getElementById('signinScreen').style.display = 'none';
+  document.getElementById('appBody').style.display = 'block';
+  document.getElementById('refreshBtn').style.display = 'flex';
+  document.getElementById('signOutBtn').style.display = 'flex';
+  loadData(false);
+}
+
+async function sheetsApi(path, options){
+  options = options || {};
+  options.headers = Object.assign({'Authorization': 'Bearer ' + accessToken}, options.headers || {});
+  const res = await fetch('https://sheets.googleapis.com/v4/spreadsheets/' + SHEET_ID + path, options);
+  if(res.status === 401){ throw new Error('AUTH_EXPIRED'); }
+  if(!res.ok){ throw new Error('API_ERROR_' + res.status); }
+  return res.json();
+}
+
+async function ensureSheetTitle(){
+  if(sheetTitle) return sheetTitle;
+  const meta = await sheetsApi('?fields=sheets.properties.title');
+  sheetTitle = meta.sheets[0].properties.title;
+  return sheetTitle;
+}
+
+function childOf(target){
+  if(!target) return '기타';
+  if(target.indexOf('전체 공문') !== -1 || target.indexOf('전체공문') !== -1) return '전체공문';
+  var m = target.match(/^([^\s(]+)/);
+  return m ? m[1] : '기타';
+}
+
+function classifyDday(ddayRaw, isDone){
+  var text = (ddayRaw||'').trim();
+  if(isDone) return {level:'doneFixed', label: text || '완료'};
+  if(!text || text === '-') return {level:'calm', label:'기한 없음'};
+  if(text.indexOf('경과') !== -1) return {level:'overdue', label:text.replace(/[\u{1F6A8}\u23F3]/gu,'').trim()};
+  var m = text.match(/D-(\d+)/);
+  var clean = text.replace(/[\u{1F6A8}\u23F3]/gu,'').trim();
+  if(!m) return {level:'calm', label:clean};
+  var n = parseInt(m[1],10);
+  if(n<=1) return {level:'urgent', label:clean};
+  if(n<=3) return {level:'soon', label:clean};
+  if(n<=7) return {level:'normal', label:clean};
+  return {level:'calm', label:clean};
+}
+
+function escapeHtml(s){
+  s = s || '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function gmailSearchUrl(sender, title){
+  var name = (sender||'').replace(/\(.*?\)/g,'').trim();
+  var q = (name + ' ' + title).trim();
+  return 'https://mail.google.com/mail/u/0/#search/' + encodeURIComponent(q);
+}
+
+function setStatus(kind, text){
+  document.getElementById('statusDot').className = 'dot' + (kind ? ' ' + kind : '');
+  document.getElementById('statusText').textContent = text;
+}
+
+function pad2(n){ return (n < 10 ? '0' : '') + n; }
+
+async function loadData(isManual){
+  const btn = document.getElementById('refreshBtn');
+  if(isManual) btn.classList.add('spin');
+  setStatus('loading', '불러오는 중...');
+  try{
+    const title = await ensureSheetTitle();
+    const range = "'" + title + "'!A1:K500";
+
+    // 값 + 서식(하이퍼링크) 둘 다 필요해서 spreadsheets.get(includeGridData) 사용
+    const data = await sheetsApi(
+      '?ranges=' + encodeURIComponent(range) +
+      '&fields=' + encodeURIComponent('sheets.data.rowData.values(formattedValue,hyperlink,userEnteredValue.formulaValue)')
+    );
+
+    const rows = (data.sheets && data.sheets[0] && data.sheets[0].data && data.sheets[0].data[0] && data.sheets[0].data[0].rowData) || [];
+    const items = [];
+    for(let r = 0; r < rows.length; r++){
+      const cells = (rows[r] && rows[r].values) || [];
+      if(cells.length < 9) continue;
+      const chkCell = cells[0];
+      const chkVal = chkCell ? (chkCell.formattedValue || '') : '';
+      if(chkVal.toUpperCase() !== 'TRUE' && chkVal.toUpperCase() !== 'FALSE') continue;
+      const get = (idx) => (cells[idx] && cells[idx].formattedValue) || '';
+      const title2 = get(6).trim();
+      if(!title2) continue;
+
+      let mailLink = null;
+      const titleCell = cells[6];
+      if(titleCell){
+        if(titleCell.hyperlink) mailLink = titleCell.hyperlink;
+        else if(titleCell.userEnteredValue && titleCell.userEnteredValue.formulaValue){
+          const m = titleCell.userEnteredValue.formulaValue.match(/HYPERLINK\(\s*"([^"]+)"/i);
+          if(m) mailLink = m[1];
+        }
+      }
+
+      items.push({
+        row: r + 1,
+        done: chkVal.toUpperCase() === 'TRUE',
+        ddayRaw: get(1), kind: get(2), target: get(3),
+        recvDate: get(4), sender: get(5), title: title2, mailLink: mailLink,
+        content: get(7), deadline: get(8), doneBy: get(9), doneAt: get(10)
+      });
+    }
+
+    allItems = items.map(function(i){ i.child = childOf(i.target); return i; });
+    const now = new Date();
+    setStatus('', '업데이트됨 · ' + pad2(now.getHours()) + ':' + pad2(now.getMinutes()));
+    renderChips();
+    render();
+  }catch(err){
+    console.error(err);
+    if(String(err.message) === 'AUTH_EXPIRED'){
+      setStatus('error', '로그인이 만료됐어요. 다시 로그인해주세요.');
+      signOut();
+    }else{
+      setStatus('error', '불러오기 실패 — 새로고침을 눌러주세요');
+    }
+  }finally{
+    if(isManual) btn.classList.remove('spin');
+  }
+}
+
+async function setChecked(row, value){
+  const title = await ensureSheetTitle();
+  const nowStr = value ? new Date().toISOString().replace('T',' ').substring(0,19) : '';
+  const doneByStr = value ? '강석철(앱)' : '';
+
+  const body = {
+    valueInputOption: 'USER_ENTERED',
+    data: [
+      { range: "'" + title + "'!A" + row, values: [[value]] },
+      { range: "'" + title + "'!J" + row, values: [[doneByStr]] },
+      { range: "'" + title + "'!K" + row, values: [[nowStr]] }
+    ]
+  };
+
+  await sheetsApi('/values:batchUpdate', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body)
+  });
+}
+
+function renderChips(){
+  var children = ['전체','희엘','라엘','전체공문'];
+  var html = children.map(function(c){
+    var count = c === '전체' ? allItems.length : allItems.filter(function(i){ return i.child === c; }).length;
+    return '<div class="chip" data-child="' + c + '" data-active="' + (activeChild===c) + '" onclick="setChild(\'' + c + '\')">' + c + ' <span class="count">' + count + '</span></div>';
+  }).join('');
+  document.getElementById('chipRow').innerHTML = html;
+}
+
+function setChild(c){ activeChild = c; renderChips(); render(); }
+function setTab(t){
+  currentTab = t;
+  document.querySelectorAll('.tab').forEach(function(el){ el.dataset.active = (el.dataset.tab===t); });
+  render();
+}
+function toggleExpand(el){
+  el.previousElementSibling.classList.toggle('expanded');
+  el.textContent = el.previousElementSibling.classList.contains('expanded') ? '접기' : '더보기';
+}
+
+function toggleCheck(row, value, cardEl){
+  if(cardEl){
+    cardEl.classList.add('removing');
+    setTimeout(function(){
+      var item = allItems.find(function(i){ return i.row === row; });
+      if(item){
+        item.done = value;
+        item.doneBy = value ? '강석철(앱)' : '';
+        item.doneAt = value ? new Date().toISOString().replace('T',' ').substring(0,19) : '';
+      }
+      renderChips();
+      render();
+    }, 180);
+  }
+  setChecked(row, value).catch(function(err){
+    console.error(err);
+    alert('시트 업데이트에 실패했어요. 다시 시도해주세요.');
+    loadData(false);
+  });
+}
+
+function cardHtml(i){
+  var d = classifyDday(i.ddayRaw, i.done);
+  var childTagClass = i.child === '희엘' ? 'child-희엘' : i.child === '라엘' ? 'child-라엘' : 'child-전체공문';
+
+  var kindTag = i.kind ? ('<span class="tag kind">' + escapeHtml(i.kind) + '</span>') : '';
+  var moreBtn = (i.content && i.content.length > 45) ? '<span class="more-btn" onclick="toggleExpand(this)">더보기</span>' : '';
+  var deadlineHtml = (i.deadline && i.deadline !== '-')
+    ? ('<span class="deadline"><span class="lab">마감</span>' + escapeHtml(i.deadline) + '</span>')
+    : '';
+  var doneMeta = i.done
+    ? ('<div class="done-meta"><span>&#10003; ' + escapeHtml(i.doneBy) + (i.doneAt ? (' · ' + escapeHtml(i.doneAt)) : '') + '</span>' +
+       '<button class="undo-btn" onclick="toggleCheck(' + i.row + ', false, this.closest(\'.card\'))">되돌리기</button></div>')
+    : '';
+
+  var mailUrl = i.mailLink || gmailSearchUrl(i.sender, i.title);
+  var titleHtml = '<a class="title-link" href="' + mailUrl + '" target="_blank" rel="noopener">' + escapeHtml(i.title) + '<span class="arrow">&#8599;</span></a>';
+
+  var html = '';
+  html += '<div class="card ' + (i.done?'done':'') + '" data-row="' + i.row + '">';
+  html += '  <div class="card-top">';
+  html += '    <div class="left-cluster">';
+  html += '      <button class="check-btn" onclick="toggleCheck(' + i.row + ', ' + (!i.done) + ', this.closest(\'.card\'))" aria-label="확인 처리">';
+  html += '        <svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+  html += '      </button>';
+  html += '      <div class="tag-group">';
+  html += '        <span class="tag ' + childTagClass + '">' + escapeHtml(i.target || i.child) + '</span>';
+  html += '        ' + kindTag;
+  html += '      </div>';
+  html += '    </div>';
+  html += '    <div class="stamp ' + d.level + '">' + escapeHtml(d.label) + '</div>';
+  html += '  </div>';
+  html += '  ' + titleHtml;
+  html += '  <div class="body-text">' + escapeHtml(i.content) + '</div>';
+  html += '  ' + moreBtn;
+  html += '  <div class="card-foot">';
+  html += '    <span class="sender">' + escapeHtml(i.sender) + ' · ' + escapeHtml(i.recvDate) + '</span>';
+  html += '    ' + deadlineHtml;
+  html += '  </div>';
+  html += '  ' + doneMeta;
+  html += '</div>';
+  return html;
+}
+
+function render(){
+  var items = allItems.filter(function(i){ return currentTab==='done' ? i.done : !i.done; });
+  if(activeChild !== '전체') items = items.filter(function(i){ return i.child === activeChild; });
+
+  document.getElementById('cntPending').textContent = allItems.filter(function(i){ return !i.done && (activeChild==='전체'||i.child===activeChild); }).length;
+  document.getElementById('cntDone').textContent = allItems.filter(function(i){ return i.done && (activeChild==='전체'||i.child===activeChild); }).length;
+
+  var list = document.getElementById('list');
+  if(items.length === 0){
+    var emoji = currentTab==='done' ? '\u{1F5C2}' : '\u2728';
+    var msg = currentTab==='done' ? '완료된 공지가 없습니다.' : '진행 중인 공지가 없습니다.';
+    list.innerHTML = '<div class="empty"><span class="big">' + emoji + '</span>' + msg + '</div>';
+    return;
+  }
+
+  list.innerHTML = items.map(cardHtml).join('');
+}
+
+window.addEventListener('load', function(){
+  // GIS 라이브러리가 로드될 때까지 잠깐 대기
+  var tries = 0;
+  var iv = setInterval(function(){
+    tries++;
+    if(window.google && google.accounts && google.accounts.oauth2){
+      clearInterval(iv);
+      initGIS();
+    }else if(tries > 50){
+      clearInterval(iv);
+      setStatus('error', '구글 로그인 라이브러리를 불러오지 못했어요. 새로고침해주세요.');
+    }
+  }, 100);
+});
+</script>
+</body>
+</html>
