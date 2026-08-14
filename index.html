@@ -269,6 +269,22 @@ function escapeHtml(s){
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+function isMobileDevice(){
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent || '');
+}
+
+function extractMsgId(mailLink){
+  if(!mailLink) return null;
+  var m = mailLink.match(/#\w+\/([a-zA-Z0-9]+)/);
+  return m ? m[1] : null;
+}
+
+function gmailAppUrl(mailLink){
+  var id = extractMsgId(mailLink);
+  if(!id) return null;
+  return 'googlegmail:///cv=' + id + '/accountId=0';
+}
+
 function gmailSearchUrl(sender, title){
   var name = (sender||'').replace(/\(.*?\)/g,'').trim();
   var q = (name + ' ' + title).trim();
@@ -422,7 +438,10 @@ function cardHtml(i){
     : '';
 
   var mailUrl = i.mailLink || gmailSearchUrl(i.sender, i.title);
-  var titleHtml = '<a class="title-link" href="' + mailUrl + '" target="_blank" rel="noopener">' + escapeHtml(i.title) + '<span class="arrow">&#8599;</span></a>';
+  var appUrl = isMobileDevice() ? gmailAppUrl(i.mailLink) : null;
+  var titleHtml = appUrl
+    ? ('<a class="title-link" href="' + appUrl + '">' + escapeHtml(i.title) + '<span class="arrow">&#128231;</span></a>')
+    : ('<a class="title-link" href="' + mailUrl + '" target="_blank" rel="noopener">' + escapeHtml(i.title) + '<span class="arrow">&#8599;</span></a>');
 
   var html = '';
   html += '<div class="card ' + (i.done?'done':'') + '" data-row="' + i.row + '">';
